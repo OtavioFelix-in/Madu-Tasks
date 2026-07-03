@@ -1,11 +1,12 @@
 // Card de uma tarefa na lista.
-// Toque: marca/desmarca como concluída. Toque longo: apagar.
+// Toque no card: edita (ou marca, se a tela não tiver edição).
+// Toque no círculo: marca/desmarca como concluída. Toque longo: apagar.
 
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors, taskTypes } from '../theme';
 import { formatDateTime, isOverdue, relativeLabel } from '../utils/date';
 
-export default function TaskItem({ task, onToggle, onDelete }) {
+export default function TaskItem({ task, onToggle, onDelete, onEdit }) {
   const type = taskTypes[task.type] ?? taskTypes.tarefa;
   const done = task.done === 1;
   const late = !done && isOverdue(task.due_date);
@@ -13,7 +14,7 @@ export default function TaskItem({ task, onToggle, onDelete }) {
   return (
     <Pressable
       style={({ pressed }) => [styles.card, done && styles.cardDone, pressed && styles.cardPressed]}
-      onPress={() => onToggle(task)}
+      onPress={() => (onEdit ? onEdit(task) : onToggle(task))}
       onLongPress={() => onDelete(task)}
     >
       <View style={[styles.typeBadge, { backgroundColor: `${type.color}22` }]}>
@@ -30,9 +31,13 @@ export default function TaskItem({ task, onToggle, onDelete }) {
         </Text>
       </View>
 
-      <View style={[styles.check, done && styles.checkDone]}>
+      <Pressable
+        style={[styles.check, done && styles.checkDone]}
+        hitSlop={12}
+        onPress={() => onToggle(task)}
+      >
         {done ? <Text style={styles.checkMark}>✓</Text> : null}
-      </View>
+      </Pressable>
     </Pressable>
   );
 }

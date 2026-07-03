@@ -6,9 +6,14 @@ Feito com **React Native + Expo (SDK 57)**, 100% offline: os dados ficam num ban
 
 ## Como funciona
 
-- Cada tarefa tem título, tipo (📝 prova, 📚 trabalho, ✏️ tarefa), matéria opcional e prazo.
-- Ao criar, o app agenda uma notificação **1 dia antes** do prazo (ou 1 hora antes, se já faltar menos de um dia).
-- Toque na tarefa para marcar como concluída; toque longo para apagar.
+O app tem 4 abas: **✅ Tarefas**, **📅 Calendário**, **🍅 Pomodoro** e **📊 Resumo**.
+
+- Cada tarefa tem título, tipo (📝 prova, 📚 trabalho, ✏️ tarefa), matéria opcional, prazo
+  e **quando lembrar** (na hora, 1h, 1 dia ou 3 dias antes).
+- Toque no card para **editar**; toque no círculo para concluir; toque longo para apagar.
+- O calendário mostra bolinhas nos dias com tarefa — toque num dia para ver a lista.
+- O Pomodoro alterna 25 min de foco e 5 de pausa, com notificação ao fim de cada ciclo.
+- O Resumo conta tarefas concluídas no mês, pendentes, atrasadas e pomodoros feitos.
 
 ## Estrutura
 
@@ -54,10 +59,9 @@ madu-tasks/
 3. Ao final, o site do Expo dá um link para baixar o `.apk`.
 4. Mande o APK para o celular (WhatsApp/Drive), toque nele e aceite "instalar de fontes desconhecidas".
 
-## Ideias para a v2
+## Ideias para a v3
 
-- Visão de calendário/semana
-- Editar tarefa existente
-- Escolher quando ser lembrada (ex.: 3 dias antes)
-- Timer Pomodoro para sessões de estudo
-- Estatísticas ("você concluiu 12 tarefas este mês! 🎉")
+- Matérias com cores próprias e filtro por matéria
+- Repetição de tarefas (ex.: "toda segunda")
+- Sincronização entre celular e tablet (Supabase)
+- Tema escuro

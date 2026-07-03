@@ -1,24 +1,20 @@
 // Tela principal: lista de tarefas + botão flutuante para adicionar.
+// Toque no card edita; toque no círculo conclui; toque longo apaga.
 
 import { useEffect, useState } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import TaskForm from '../components/TaskForm';
 import TaskItem from '../components/TaskItem';
 import * as db from '../db/database';
-import {
-  cancelReminder,
-  scheduleTaskReminder,
-  setupNotifications,
-} from '../notifications/notifications';
+import { cancelReminder, scheduleTaskReminder } from '../notifications/notifications';
 import { colors, taskTypes } from '../theme';
 
 export default function HomeScreen() {
   const [tasks, setTasks] = useState([]);
   const [formVisible, setFormVisible] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
 
   useEffect(() => {
-    db.initDatabase();
-    setupNotifications();
     refresh();
   }, []);
 
@@ -26,16 +22,42 @@ export default function HomeScreen() {
     setTasks(db.getTasks());
   }
 
-  async function handleSave({ title, type, subject, dueDate }) {
-    const notificationId = await scheduleTaskReminder(title, taskTypes[type].label, dueDate);
-    db.addTask({
+  function openNew() {
+    setEditingTask(null);
+    setFormVisible(true);
+  }
+
+  function openEdit(task) {
+    setEditingTask(task);
+    setFormVisible(true);
+  }
+
+  async function handleSave({ title, type, subject, dueDate, remindMinutes }) {
+    // Edição: cancela o lembrete antigo antes de agendar o novo.
+    if (editingTask) {
+      await cancelReminder(editingTask.notification_id);
+    }
+    const notificationId = await scheduleTaskReminder(
+      title,
+      taskTypes[type].label,
+      dueDate,
+      remindMinutes
+    );
+    const fields = {
       title,
       type,
       subject: subject || null,
       dueDate: dueDate.toISOString(),
+      remindMinutes,
       notificationId,
-    });
+    };
+    if (editingTask) {
+      db.updateTask({ id: editingTask.id, ...fields });
+    } else {
+      db.addTask(fields);
+    }
     setFormVisible(false);
+    setEditingTask(null);
     refresh();
   }
 
@@ -80,7 +102,7 @@ export default function HomeScreen() {
         data={tasks}
         keyExtractor={(item) => String(item.id)}
         renderItem={({ item }) => (
-          <TaskItem task={item} onToggle={handleToggle} onDelete={handleDelete} />
+          <TaskItem task={item} onToggle={handleToggle} onDelete={handleDelete} onEdit={openEdit} />
         )}
         contentContainerStyle={styles.list}
         ListEmptyComponent={
@@ -92,14 +114,18 @@ export default function HomeScreen() {
         }
       />
 
-      <Pressable style={styles.fab} onPress={() => setFormVisible(true)}>
+      <Pressable style={styles.fab} onPress={openNew}>
         <Text style={styles.fabText}>+</Text>
       </Pressable>
 
       <TaskForm
         visible={formVisible}
+        task={editingTask}
         onSave={handleSave}
-        onClose={() => setFormVisible(false)}
+        onClose={() => {
+          setFormVisible(false);
+          setEditingTask(null);
+        }}
       />
     </View>
   );
@@ -151,7 +177,7 @@ const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
     right: 24,
-    bottom: 32,
+    bottom: 24,
     width: 60,
     height: 60,
     borderRadius: 30,

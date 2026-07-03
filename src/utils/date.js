@@ -2,6 +2,10 @@
 
 const WEEKDAYS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
 const MONTHS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+const MONTHS_FULL = [
+  'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+  'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro',
+];
 
 function pad(n) {
   return String(n).padStart(2, '0');
@@ -31,4 +35,40 @@ export function relativeLabel(isoDate) {
   if (days === 0) return 'é hoje!';
   if (days === 1) return 'é amanhã';
   return `em ${days} dias`;
+}
+
+// ---- Helpers do calendário ----
+
+export function isSameDay(a, b) {
+  return (
+    a && b &&
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
+export function monthTitle(date) {
+  return `${MONTHS_FULL[date.getMonth()]} de ${date.getFullYear()}`;
+}
+
+// Matriz do mês: array de semanas, cada semana com 7 posições (Date ou null
+// nos espaços vazios do início/fim). Semana começa no domingo.
+export function monthMatrix(year, month) {
+  const firstWeekday = new Date(year, month, 1).getDay();
+  const totalDays = new Date(year, month + 1, 0).getDate();
+
+  const weeks = [];
+  let week = new Array(firstWeekday).fill(null);
+  for (let day = 1; day <= totalDays; day++) {
+    week.push(new Date(year, month, day));
+    if (week.length === 7) {
+      weeks.push(week);
+      week = [];
+    }
+  }
+  if (week.length > 0) {
+    weeks.push([...week, ...new Array(7 - week.length).fill(null)]);
+  }
+  return weeks;
 }

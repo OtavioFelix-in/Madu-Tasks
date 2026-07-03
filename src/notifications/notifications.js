@@ -1,5 +1,4 @@
 // Lembretes locais com expo-notifications — não precisa de servidor.
-// Regra: avisa 1 dia antes do prazo; se já faltar menos que isso, avisa 1 hora antes.
 //
 // IMPORTANTE: no Expo Go (Android, SDK 53+) o módulo expo-notifications quebra
 // só de ser importado. Por isso o require é condicional: dentro do Expo Go os
@@ -40,33 +39,36 @@ export async function setupNotifications() {
   return status === 'granted';
 }
 
-export async function scheduleTaskReminder(title, typeLabel, dueDate) {
-  if (!Notifications) return null;
-
-  const now = new Date();
-  const oneDayBefore = new Date(dueDate.getTime() - 24 * 60 * 60 * 1000);
-  const oneHourBefore = new Date(dueDate.getTime() - 60 * 60 * 1000);
-
-  let remindAt = null;
-  if (oneDayBefore > now) {
-    remindAt = oneDayBefore;
-  } else if (oneHourBefore > now) {
-    remindAt = oneHourBefore;
-  }
-  if (!remindAt) return null;
-
+async function scheduleAt(date, title, body) {
+  if (!Notifications || date <= new Date()) return null;
   return Notifications.scheduleNotificationAsync({
-    content: {
-      title: `${typeLabel} chegando! 💖`,
-      body: `"${title}" vence ${formatDateTime(dueDate)}. Você consegue!`,
-      sound: 'default',
-    },
+    content: { title, body, sound: 'default' },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DATE,
-      date: remindAt,
+      date,
       channelId: 'lembretes',
     },
   });
+}
+
+// Agenda o lembrete da tarefa X minutos antes do prazo (escolha da usuária).
+// Se esse momento já passou, não agenda nada.
+export async function scheduleTaskReminder(title, typeLabel, dueDate, remindMinutes) {
+  const remindAt = new Date(dueDate.getTime() - remindMinutes * 60 * 1000);
+  return scheduleAt(
+    remindAt,
+    `${typeLabel} chegando! 💖`,
+    `"${title}" vence ${formatDateTime(dueDate)}. Você consegue!`
+  );
+}
+
+// Avisa quando o ciclo do Pomodoro termina (mesmo com o app em segundo plano).
+export async function schedulePomodoroEnd(endsAt, isBreak) {
+  return scheduleAt(
+    endsAt,
+    isBreak ? 'Pausa encerrada! 🍅' : 'Foco concluído! 🎉',
+    isBreak ? 'Bora voltar pros estudos?' : 'Você merece 5 minutinhos de pausa.'
+  );
 }
 
 export async function cancelReminder(notificationId) {
