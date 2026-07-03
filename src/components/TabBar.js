@@ -1,7 +1,8 @@
 // Barra de navegação inferior, feita à mão (sem biblioteca de navegação).
 
+import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors } from '../theme';
+import { useTheme } from '../theme-context';
 
 const TABS = [
   { key: 'tasks', emoji: '✅', label: 'Tarefas' },
@@ -11,6 +12,9 @@ const TABS = [
 ];
 
 export default function TabBar({ active, onChange }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   return (
     <View style={styles.bar}>
       {TABS.map((tab) => {
@@ -28,37 +32,39 @@ export default function TabBar({ active, onChange }) {
   );
 }
 
-const styles = StyleSheet.create({
-  bar: {
-    flexDirection: 'row',
-    backgroundColor: colors.card,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingTop: 6,
-    paddingBottom: 8,
-  },
-  tab: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 2,
-  },
-  iconWrap: {
-    paddingHorizontal: 16,
-    paddingVertical: 3,
-    borderRadius: 14,
-  },
-  iconWrapActive: {
-    backgroundColor: colors.primaryLight,
-  },
-  emoji: {
-    fontSize: 18,
-  },
-  label: {
-    fontSize: 11,
-    color: colors.textMuted,
-  },
-  labelActive: {
-    color: colors.primary,
-    fontWeight: '700',
-  },
-});
+function createStyles(colors) {
+  return StyleSheet.create({
+    bar: {
+      flexDirection: 'row',
+      backgroundColor: colors.card,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      paddingTop: 6,
+      paddingBottom: 8,
+    },
+    tab: {
+      flex: 1,
+      alignItems: 'center',
+      gap: 2,
+    },
+    iconWrap: {
+      paddingHorizontal: 16,
+      paddingVertical: 3,
+      borderRadius: 14,
+    },
+    iconWrapActive: {
+      backgroundColor: colors.primaryLight,
+    },
+    emoji: {
+      fontSize: 18,
+    },
+    label: {
+      fontSize: 11,
+      color: colors.textMuted,
+    },
+    labelActive: {
+      color: colors.primary,
+      fontWeight: '700',
+    },
+  });
+}

@@ -9,9 +9,10 @@ import CalendarScreen from './src/screens/CalendarScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import PomodoroScreen from './src/screens/PomodoroScreen';
 import StatsScreen from './src/screens/StatsScreen';
-import { colors } from './src/theme';
+import { syncNow } from './src/sync/sync';
+import { ThemeProvider, useTheme } from './src/theme-context';
 
-// O banco precisa existir antes de qualquer tela consultar.
+// O banco precisa existir antes de qualquer tela (ou o tema) consultar.
 initDatabase();
 
 const SCREENS = {
@@ -21,11 +22,13 @@ const SCREENS = {
   stats: StatsScreen,
 };
 
-export default function App() {
+function Root() {
+  const { colors, isDark } = useTheme();
   const [tab, setTab] = useState('tasks');
 
   useEffect(() => {
     setupNotifications();
+    syncNow().catch(() => {}); // sincroniza na abertura, se logada e com internet
   }, []);
 
   // Só a aba ativa é renderizada: ao trocar, a tela remonta e recarrega
@@ -33,17 +36,25 @@ export default function App() {
   const Screen = SCREENS[tab];
 
   return (
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: colors.background }}
+      edges={['top', 'bottom']}
+    >
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+      <View style={{ flex: 1 }}>
+        <Screen />
+      </View>
+      <TabBar active={tab} onChange={setTab} />
+    </SafeAreaView>
+  );
+}
+
+export default function App() {
+  return (
     <SafeAreaProvider>
-      <SafeAreaView
-        style={{ flex: 1, backgroundColor: colors.background }}
-        edges={['top', 'bottom']}
-      >
-        <StatusBar style="dark" />
-        <View style={{ flex: 1 }}>
-          <Screen />
-        </View>
-        <TabBar active={tab} onChange={setTab} />
-      </SafeAreaView>
+      <ThemeProvider>
+        <Root />
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }

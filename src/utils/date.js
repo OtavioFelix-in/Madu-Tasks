@@ -7,6 +7,10 @@ const MONTHS_FULL = [
   'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro',
 ];
 
+// Iniciais dos dias, para os chips de repetição e o cabeçalho do calendário.
+export const WEEKDAY_INITIALS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+export const WEEKDAYS_SHORT = WEEKDAYS;
+
 function pad(n) {
   return String(n).padStart(2, '0');
 }
@@ -35,6 +39,20 @@ export function relativeLabel(isoDate) {
   if (days === 0) return 'é hoje!';
   if (days === 1) return 'é amanhã';
   return `em ${days} dias`;
+}
+
+// ---- Repetição semanal ----
+
+// Próxima data (depois de fromDate) que cai num dos dias escolhidos (0=dom..6=sáb),
+// mantendo o mesmo horário. Ex.: concluiu a de segunda, nasce a da próxima segunda.
+export function nextOccurrence(fromDate, repeatDays) {
+  if (!repeatDays || repeatDays.length === 0) return null;
+  for (let i = 1; i <= 7; i++) {
+    const candidate = new Date(fromDate);
+    candidate.setDate(fromDate.getDate() + i);
+    if (repeatDays.includes(candidate.getDay())) return candidate;
+  }
+  return null;
 }
 
 // ---- Helpers do calendário ----
