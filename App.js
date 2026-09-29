@@ -1,6 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { AppState, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import TabBar from './src/components/TabBar';
 import PomodoroBanner from './src/components/PomodoroBanner';
@@ -13,6 +13,7 @@ import PomodoroScreen from './src/screens/PomodoroScreen';
 import StatsScreen from './src/screens/StatsScreen';
 import { syncNow } from './src/sync/sync';
 import { ThemeProvider, useTheme } from './src/theme-context';
+import { writeWidgetSnapshot } from './src/widget/widget';
 
 // O banco precisa existir antes de qualquer tela (ou o tema) consultar.
 initDatabase();
@@ -32,7 +33,16 @@ function Root() {
 
   useEffect(() => {
     setupNotifications();
-    syncNow().catch(() => {}); // sincroniza na abertura, se logada e com internet
+    syncNow()
+      .catch(() => {}) // sincroniza na abertura, se logada e com internet
+      .finally(writeWidgetSnapshot);
+
+    // Ao sair do app, deixa o widget da tela inicial com os dados de agora.
+    writeWidgetSnapshot();
+    const sub = AppState.addEventListener('change', (status) => {
+      if (status !== 'active') writeWidgetSnapshot();
+    });
+    return () => sub.remove();
   }, []);
 
   // Só a aba ativa é renderizada: ao trocar, a tela remonta e recarrega

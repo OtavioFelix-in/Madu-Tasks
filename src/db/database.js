@@ -385,6 +385,21 @@ export function getPomodorosToday() {
   ).n;
 }
 
+// ---- Widget ----
+
+// Próximas tarefas pendentes (com nome da matéria) para o widget da tela inicial.
+export function getWidgetTasks(limit) {
+  return db.getAllSync(
+    `SELECT t.title, t.type, t.due_date, s.name AS subject_name
+     FROM tasks t
+     LEFT JOIN subjects s ON s.id = t.subject_id AND s.deleted = 0
+     WHERE t.deleted = 0 AND t.done = 0
+     ORDER BY t.due_date ASC
+     LIMIT ?`,
+    limit
+  );
+}
+
 // ---- Estatísticas ----
 
 export function getStats() {
