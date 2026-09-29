@@ -65,6 +65,13 @@ export function initDatabase() {
       updated_at TEXT,
       deleted INTEGER NOT NULL DEFAULT 0
     );
+    CREATE TABLE IF NOT EXISTS attachments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      uuid TEXT UNIQUE,
+      task_uuid TEXT NOT NULL,
+      file_name TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
+    );
     CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY,
       value TEXT
@@ -305,6 +312,33 @@ export function replaceSteps(taskUuid, steps) {
       );
     }
   });
+}
+
+// ---- Anexos (fotos) ----
+// Só o nome do arquivo fica no banco; a imagem em si mora na pasta do app
+// (ver src/attachments/attachments.js). Anexos ficam só no aparelho: não entram
+// no sync nem no backup em JSON.
+
+export function getAttachments(taskUuid) {
+  return db.getAllSync('SELECT * FROM attachments WHERE task_uuid = ? ORDER BY id', taskUuid);
+}
+
+// Contagem por tarefa, para o selo "📷 2" nos cards com uma consulta só.
+export function getAttachmentCounts() {
+  return db.getAllSync('SELECT task_uuid, COUNT(*) AS total FROM attachments GROUP BY task_uuid');
+}
+
+export function addAttachment(taskUuid, fileName) {
+  db.runSync(
+    'INSERT INTO attachments (uuid, task_uuid, file_name) VALUES (?, ?, ?)',
+    newUuid(),
+    taskUuid,
+    fileName
+  );
+}
+
+export function removeAttachment(id) {
+  db.runSync('DELETE FROM attachments WHERE id = ?', id);
 }
 
 // ---- Settings (chave/valor) ----

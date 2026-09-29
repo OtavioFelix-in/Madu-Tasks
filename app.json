@@ -31,6 +31,14 @@
           "color": "#E75480"
         }
       ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "O MaduTasks precisa acessar suas fotos para anexá-las às tarefas.",
+          "cameraPermission": "O MaduTasks precisa da câmera para fotografar anotações e anexar às tarefas.",
+          "microphonePermission": false
+        }
+      ],
       "expo-sharing"
     ]
   }

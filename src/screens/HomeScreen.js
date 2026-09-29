@@ -14,6 +14,7 @@ import {
   View,
 } from 'react-native';
 import ConfettiCannon from 'react-native-confetti-cannon';
+import { clearAttachments, saveAttachments } from '../attachments/attachments';
 import SubjectsManager from '../components/SubjectsManager';
 import TaskForm from '../components/TaskForm';
 import TaskItem from '../components/TaskItem';
@@ -30,6 +31,7 @@ export default function HomeScreen() {
 
   const [tasks, setTasks] = useState([]);
   const [stepCounts, setStepCounts] = useState({});
+  const [photoCounts, setPhotoCounts] = useState({});
   const [formVisible, setFormVisible] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [managerVisible, setManagerVisible] = useState(false);
@@ -53,6 +55,9 @@ export default function HomeScreen() {
       counts[row.task_uuid] = { total: row.total, done: row.done ?? 0 };
     }
     setStepCounts(counts);
+    const photos = {};
+    for (const row of db.getAttachmentCounts()) photos[row.task_uuid] = row.total;
+    setPhotoCounts(photos);
   }
 
   function openNew() {
@@ -65,7 +70,7 @@ export default function HomeScreen() {
     setFormVisible(true);
   }
 
-  async function handleSave({ title, type, subjectId, dueDate, remindMinutes, repeatDays, grade, steps }) {
+  async function handleSave({ title, type, subjectId, dueDate, remindMinutes, repeatDays, grade, steps, photos }) {
     if (editingTask) {
       await cancelReminder(editingTask.notification_id);
     }
@@ -93,6 +98,7 @@ export default function HomeScreen() {
       taskUuid = db.addTask(fields);
     }
     db.replaceSteps(taskUuid, steps);
+    saveAttachments(taskUuid, photos);
     setFormVisible(false);
     setEditingTask(null);
     queueSync();
@@ -149,6 +155,7 @@ export default function HomeScreen() {
         onPress: async () => {
           await cancelReminder(task.notification_id);
           db.deleteTask(task.id);
+          clearAttachments(task.uuid);
           queueSync();
           refresh();
         },
@@ -269,6 +276,7 @@ export default function HomeScreen() {
           <TaskItem
             task={item}
             stepCount={stepCounts[item.uuid]}
+            photoCount={photoCounts[item.uuid]}
             onToggle={handleToggle}
             onDelete={handleDelete}
             onEdit={openEdit}

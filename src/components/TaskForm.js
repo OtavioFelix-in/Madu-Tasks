@@ -4,6 +4,8 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useEffect, useMemo, useState } from 'react';
 import {
+  Alert,
+  Image,
   KeyboardAvoidingView,
   Modal,
   Pressable,
@@ -13,6 +15,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { attachmentUri, deleteAttachmentFile, pickPhotos, takePhoto } from '../attachments/attachments';
 import * as db from '../db/database';
 import { taskTypes } from '../theme';
 import { useTheme } from '../theme-context';
@@ -64,6 +67,8 @@ export default function TaskForm({ visible, task, onSave, onClose }) {
   const [newStep, setNewStep] = useState('');
   const [grade, setGrade] = useState('');
   const [picker, setPicker] = useState(null); // 'date' | 'time' | null
+  const [photos, setPhotos] = useState([]); // { id?, fileName, uri }
+  const [viewerUri, setViewerUri] = useState(null);
 
   const subjects = useMemo(() => (visible ? db.getSubjects() : []), [visible]);
 
@@ -87,6 +92,16 @@ export default function TaskForm({ visible, task, onSave, onClose }) {
     setNewStep('');
     setGrade(task?.grade != null ? String(task.grade) : '');
     setPicker(null);
+    setPhotos(
+      task
+        ? db.getAttachments(task.uuid).map((a) => ({
+            id: a.id,
+            fileName: a.file_name,
+            uri: attachmentUri(a.file_name),
+          }))
+        : []
+    );
+    setViewerUri(null);
   }, [visible, task]);
 
   function toggleRepeatDay(day) {
@@ -121,6 +136,32 @@ export default function TaskForm({ visible, task, onSave, onClose }) {
     return null;
   }
 
+  async function addPhotos(pick) {
+    try {
+      const { photos: added, denied } = await pick();
+      if (denied) {
+        Alert.alert('Câmera bloqueada', 'Libere a câmera nas configurações do app para tirar fotos.');
+      } else if (added.length > 0) {
+        setPhotos((current) => [...current, ...added]);
+      }
+    } catch (e) {
+      Alert.alert('Não foi possível anexar a foto', String(e?.message ?? e));
+    }
+  }
+
+  function removePhoto(index) {
+    const photo = photos[index];
+    // Foto que ainda não foi salva: apaga o arquivo já. As salvas saem no "Salvar".
+    if (!photo.id) deleteAttachmentFile(photo.fileName);
+    setPhotos((current) => current.filter((_, i) => i !== index));
+  }
+
+  // Cancelar/fechar descarta as fotos novas que não chegaram a ser salvas.
+  function handleClose() {
+    photos.filter((p) => !p.id).forEach((p) => deleteAttachmentFile(p.fileName));
+    onClose();
+  }
+
   function handleSave() {
     if (!title.trim()) return;
     const parsedGrade = grade.trim() === '' ? null : parseFloat(grade.replace(',', '.'));
@@ -133,6 +174,7 @@ export default function TaskForm({ visible, task, onSave, onClose }) {
       repeatDays: buildRepeatRule(),
       grade: Number.isFinite(parsedGrade) ? parsedGrade : null,
       steps,
+      photos,
     });
   }
 
@@ -152,7 +194,7 @@ export default function TaskForm({ visible, task, onSave, onClose }) {
   }
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={handleClose}>
       {/* 'padding' também no Android: com edge-to-edge (Android 15+) o sistema
           não redimensiona a janela sozinho e o teclado cobria o formulário. */}
       <KeyboardAvoidingView style={styles.backdrop} behavior="padding">
@@ -330,6 +372,30 @@ export default function TaskForm({ visible, task, onSave, onClose }) {
               </Pressable>
             </View>
 
+            <Text style={styles.label}>Fotos:</Text>
+            {photos.length > 0 ? (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={styles.photoRow}>
+                  {photos.map((photo, i) => (
+                    <Pressable key={photo.fileName} onPress={() => setViewerUri(photo.uri)}>
+                      <Image source={{ uri: photo.uri }} style={styles.thumb} />
+                      <Pressable style={styles.thumbRemove} hitSlop={8} onPress={() => removePhoto(i)}>
+                        <Text style={styles.thumbRemoveText}>✕</Text>
+                      </Pressable>
+                    </Pressable>
+                  ))}
+                </View>
+              </ScrollView>
+            ) : null}
+            <View style={styles.chipRow}>
+              <Pressable style={styles.chip} onPress={() => addPhotos(takePhoto)}>
+                <Text style={styles.chipText}>📷 Câmera</Text>
+              </Pressable>
+              <Pressable style={styles.chip} onPress={() => addPhotos(pickPhotos)}>
+                <Text style={styles.chipText}>🖼️ Galeria</Text>
+              </Pressable>
+            </View>
+
             {type === 'prova' ? (
               <>
                 <Text style={styles.label}>Nota da prova (opcional):</Text>
@@ -345,7 +411,7 @@ export default function TaskForm({ visible, task, onSave, onClose }) {
             ) : null}
 
             <View style={styles.actions}>
-              <Pressable style={[styles.actionButton, styles.cancelButton]} onPress={onClose}>
+              <Pressable style={[styles.actionButton, styles.cancelButton]} onPress={handleClose}>
                 <Text style={styles.cancelText}>Cancelar</Text>
               </Pressable>
               <Pressable
@@ -358,6 +424,14 @@ export default function TaskForm({ visible, task, onSave, onClose }) {
           </ScrollView>
         </View>
       </KeyboardAvoidingView>
+
+      <Modal visible={!!viewerUri} transparent animationType="fade" onRequestClose={() => setViewerUri(null)}>
+        <Pressable style={styles.viewer} onPress={() => setViewerUri(null)}>
+          {viewerUri ? (
+            <Image source={{ uri: viewerUri }} style={styles.viewerImage} resizeMode="contain" />
+          ) : null}
+        </Pressable>
+      </Modal>
     </Modal>
   );
 }
@@ -500,6 +574,43 @@ function createStyles(colors) {
     stepRemove: {
       color: colors.textMuted,
       fontSize: 16,
+    },
+    photoRow: {
+      flexDirection: 'row',
+      gap: 10,
+      paddingVertical: 4,
+    },
+    thumb: {
+      width: 84,
+      height: 84,
+      borderRadius: 12,
+      backgroundColor: colors.primaryLight,
+    },
+    thumbRemove: {
+      position: 'absolute',
+      top: 4,
+      right: 4,
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      backgroundColor: 'rgba(0,0,0,0.6)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    thumbRemoveText: {
+      color: '#fff',
+      fontSize: 12,
+      fontWeight: '700',
+    },
+    viewer: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.92)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    viewerImage: {
+      width: '100%',
+      height: '100%',
     },
     stepAdd: {
       width: 44,

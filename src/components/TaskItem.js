@@ -8,7 +8,7 @@ import { useTheme } from '../theme-context';
 import { taskTypes } from '../theme';
 import { formatDateTime, isOverdue, relativeLabel, repeatLabel } from '../utils/date';
 
-export default function TaskItem({ task, onToggle, onDelete, onEdit, stepCount }) {
+export default function TaskItem({ task, onToggle, onDelete, onEdit, stepCount, photoCount }) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -43,6 +43,7 @@ export default function TaskItem({ task, onToggle, onDelete, onEdit, stepCount }
               ☑ {stepCount.done}/{stepCount.total}
             </Text>
           ) : null}
+          {photoCount > 0 ? <Text style={styles.tag}>📷 {photoCount}</Text> : null}
           {task.grade != null ? <Text style={styles.tag}>nota {task.grade}</Text> : null}
         </View>
 

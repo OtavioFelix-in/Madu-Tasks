@@ -3,6 +3,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { clearAttachments } from '../attachments/attachments';
 import TaskItem from '../components/TaskItem';
 import * as db from '../db/database';
 import { cancelReminder } from '../notifications/notifications';
@@ -53,6 +54,7 @@ export default function CalendarScreen() {
         onPress: async () => {
           await cancelReminder(task.notification_id);
           db.deleteTask(task.id);
+          clearAttachments(task.uuid);
           queueSync();
           refresh();
         },
