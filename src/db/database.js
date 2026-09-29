@@ -324,11 +324,22 @@ export function setSetting(key, value) {
 
 // ---- Pomodoro ----
 
-export function addPomodoroSession(minutes) {
+// finished_at fica em hora local ('YYYY-MM-DD HH:MM:SS'), como o default da tabela.
+function toLocalSql(date) {
+  const p = (n) => String(n).padStart(2, '0');
+  return (
+    `${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())} ` +
+    `${p(date.getHours())}:${p(date.getMinutes())}:${p(date.getSeconds())}`
+  );
+}
+
+// `finishedAt` permite contabilizar um ciclo que terminou com o app fechado.
+export function addPomodoroSession(minutes, finishedAt = new Date()) {
   db.runSync(
-    'INSERT INTO pomodoro_sessions (uuid, minutes, updated_at) VALUES (?, ?, ?)',
+    'INSERT INTO pomodoro_sessions (uuid, minutes, finished_at, updated_at) VALUES (?, ?, ?, ?)',
     newUuid(),
     minutes,
+    toLocalSql(finishedAt),
     nowIso()
   );
 }

@@ -1,118 +1,34 @@
-// Timer Pomodoro com tempos editáveis (salvos em settings).
-// O tempo restante é calculado pelo relógio (endsAt - agora), então continua
-// certo mesmo se o app ficar em segundo plano. Ao iniciar, agenda uma
-// notificação para o fim do ciclo; ao pausar/zerar, cancela.
+// Tela do Pomodoro. Toda a lógica do timer vive em src/pomodoro/pomodoro-store.js
+// (fora da tela), então ele continua rodando ao trocar de aba ou fechar o app.
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import * as db from '../db/database';
-import { cancelReminder, schedulePomodoroEnd } from '../notifications/notifications';
-import { queueSync } from '../sync/sync';
+import {
+  adjustPomodoro,
+  formatClock,
+  pausePomodoro,
+  refreshPomodoroToday,
+  resetPomodoro,
+  setPomodoroMode,
+  startPomodoro,
+  usePomodoro,
+} from '../pomodoro/pomodoro-store';
 import { useTheme } from '../theme-context';
-
-function formatClock(totalSeconds) {
-  const m = Math.floor(totalSeconds / 60);
-  const s = totalSeconds % 60;
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-}
-
-const clamp = (n) => Math.min(120, Math.max(1, n));
 
 export default function PomodoroScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
-  const [focusMin, setFocusMin] = useState(() =>
-    clamp(parseInt(db.getSetting('pomodoro_focus', '25'), 10) || 25)
-  );
-  const [breakMin, setBreakMin] = useState(() =>
-    clamp(parseInt(db.getSetting('pomodoro_break', '5'), 10) || 5)
-  );
-  const [mode, setMode] = useState('foco');
-  const [remaining, setRemaining] = useState(focusMin * 60);
-  const [running, setRunning] = useState(false);
-  const [doneToday, setDoneToday] = useState(0);
-  const endsAtRef = useRef(null);
-  const notifIdRef = useRef(null);
+  const { focusMin, breakMin, mode, remaining, running, doneToday } = usePomodoro();
+
+  useEffect(() => {
+    refreshPomodoroToday();
+  }, []);
 
   const modes = {
     foco: { label: 'Foco', emoji: '🍅', seconds: focusMin * 60 },
     pausa: { label: 'Pausa', emoji: '☕', seconds: breakMin * 60 },
   };
-
-  useEffect(() => {
-    setDoneToday(db.getPomodorosToday());
-  }, []);
-
-  useEffect(() => {
-    if (!running) return;
-    const timer = setInterval(() => {
-      const left = Math.max(0, Math.ceil((endsAtRef.current - Date.now()) / 1000));
-      setRemaining(left);
-      if (left <= 0) {
-        clearInterval(timer);
-        finishCycle();
-      }
-    }, 500);
-    return () => clearInterval(timer);
-  }, [running]);
-
-  async function start() {
-    endsAtRef.current = Date.now() + remaining * 1000;
-    notifIdRef.current = await schedulePomodoroEnd(new Date(endsAtRef.current), mode === 'pausa');
-    setRunning(true);
-  }
-
-  async function pause() {
-    setRunning(false);
-    await cancelReminder(notifIdRef.current);
-    notifIdRef.current = null;
-  }
-
-  async function reset() {
-    await pause();
-    setRemaining(modes[mode].seconds);
-  }
-
-  function finishCycle() {
-    setRunning(false);
-    notifIdRef.current = null; // a notificação já disparou sozinha
-    if (mode === 'foco') {
-      db.addPomodoroSession(focusMin);
-      setDoneToday((n) => n + 1);
-      queueSync();
-      switchMode('pausa');
-    } else {
-      switchMode('foco');
-    }
-  }
-
-  function switchMode(next) {
-    setMode(next);
-    setRemaining(next === 'foco' ? focusMin * 60 : breakMin * 60);
-  }
-
-  async function handleModePress(next) {
-    if (next === mode) return;
-    await pause();
-    switchMode(next);
-  }
-
-  // Ajusta a duração do foco/pausa (só com o timer parado).
-  function adjust(kind, delta) {
-    if (running) return;
-    if (kind === 'foco') {
-      const next = clamp(focusMin + delta);
-      setFocusMin(next);
-      db.setSetting('pomodoro_focus', next);
-      if (mode === 'foco') setRemaining(next * 60);
-    } else {
-      const next = clamp(breakMin + delta);
-      setBreakMin(next);
-      db.setSetting('pomodoro_break', next);
-      if (mode === 'pausa') setRemaining(next * 60);
-    }
-  }
 
   const progress = 1 - remaining / modes[mode].seconds;
 
@@ -128,7 +44,7 @@ export default function PomodoroScreen() {
           <Pressable
             key={key}
             style={[styles.modeChip, mode === key && styles.modeChipActive]}
-            onPress={() => handleModePress(key)}
+            onPress={() => setPomodoroMode(key)}
           >
             <Text style={[styles.modeText, mode === key && styles.modeTextActive]}>
               {info.emoji} {info.label}
@@ -154,11 +70,11 @@ export default function PomodoroScreen() {
           <View style={styles.tuneBox}>
             <Text style={styles.tuneLabel}>🍅 Foco</Text>
             <View style={styles.tuneControls}>
-              <Pressable style={styles.tuneButton} onPress={() => adjust('foco', -5)}>
+              <Pressable style={styles.tuneButton} onPress={() => adjustPomodoro('foco', -5)}>
                 <Text style={styles.tuneButtonText}>−</Text>
               </Pressable>
               <Text style={styles.tuneValue}>{focusMin}min</Text>
-              <Pressable style={styles.tuneButton} onPress={() => adjust('foco', 5)}>
+              <Pressable style={styles.tuneButton} onPress={() => adjustPomodoro('foco', 5)}>
                 <Text style={styles.tuneButtonText}>+</Text>
               </Pressable>
             </View>
@@ -166,11 +82,11 @@ export default function PomodoroScreen() {
           <View style={styles.tuneBox}>
             <Text style={styles.tuneLabel}>☕ Pausa</Text>
             <View style={styles.tuneControls}>
-              <Pressable style={styles.tuneButton} onPress={() => adjust('pausa', -1)}>
+              <Pressable style={styles.tuneButton} onPress={() => adjustPomodoro('pausa', -1)}>
                 <Text style={styles.tuneButtonText}>−</Text>
               </Pressable>
               <Text style={styles.tuneValue}>{breakMin}min</Text>
-              <Pressable style={styles.tuneButton} onPress={() => adjust('pausa', 1)}>
+              <Pressable style={styles.tuneButton} onPress={() => adjustPomodoro('pausa', 1)}>
                 <Text style={styles.tuneButtonText}>+</Text>
               </Pressable>
             </View>
@@ -179,10 +95,10 @@ export default function PomodoroScreen() {
       ) : null}
 
       <View style={styles.buttonRow}>
-        <Pressable style={[styles.button, styles.buttonGhost]} onPress={reset}>
+        <Pressable style={[styles.button, styles.buttonGhost]} onPress={resetPomodoro}>
           <Text style={styles.buttonGhostText}>Zerar</Text>
         </Pressable>
-        <Pressable style={[styles.button, styles.buttonPrimary]} onPress={running ? pause : start}>
+        <Pressable style={[styles.button, styles.buttonPrimary]} onPress={running ? pausePomodoro : startPomodoro}>
           <Text style={styles.buttonPrimaryText}>{running ? 'Pausar' : 'Começar'}</Text>
         </Pressable>
       </View>

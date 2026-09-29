@@ -3,8 +3,10 @@ import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import TabBar from './src/components/TabBar';
+import PomodoroBanner from './src/components/PomodoroBanner';
 import { initDatabase } from './src/db/database';
 import { setupNotifications } from './src/notifications/notifications';
+import { initPomodoro } from './src/pomodoro/pomodoro-store';
 import CalendarScreen from './src/screens/CalendarScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import PomodoroScreen from './src/screens/PomodoroScreen';
@@ -14,6 +16,8 @@ import { ThemeProvider, useTheme } from './src/theme-context';
 
 // O banco precisa existir antes de qualquer tela (ou o tema) consultar.
 initDatabase();
+// O timer do Pomodoro vive fora das telas: precisa iniciar aqui, não na aba.
+initPomodoro();
 
 const SCREENS = {
   tasks: HomeScreen,
@@ -44,6 +48,7 @@ function Root() {
       <View style={{ flex: 1 }}>
         <Screen />
       </View>
+      {tab !== 'pomodoro' ? <PomodoroBanner onPress={() => setTab('pomodoro')} /> : null}
       <TabBar active={tab} onChange={setTab} />
     </SafeAreaView>
   );
