@@ -22,7 +22,7 @@ import { cancelReminder, scheduleTaskReminder } from '../notifications/notificat
 import { queueSync } from '../sync/sync';
 import { taskTypes } from '../theme';
 import { useTheme } from '../theme-context';
-import { nextOccurrence } from '../utils/date';
+import { nextRepeatDate } from '../utils/date';
 
 export default function HomeScreen() {
   const { colors, mode, cycleMode } = useTheme();
@@ -116,8 +116,7 @@ export default function HomeScreen() {
   // Tarefa com repetição: ao concluir, nasce a próxima ocorrência.
   async function spawnNextOccurrence(task) {
     if (!task.repeat_days) return;
-    const days = task.repeat_days.split(',').map(Number);
-    const next = nextOccurrence(new Date(task.due_date), days);
+    const next = nextRepeatDate(new Date(task.due_date), task.repeat_days);
     if (!next) return;
     db.clearTaskRepeat(task.id); // esta ocorrência já gerou a próxima
     const notificationId = await scheduleTaskReminder(

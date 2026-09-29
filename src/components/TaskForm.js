@@ -1,5 +1,5 @@
 // Formulário de tarefa (nova ou edição), apresentado como bottom sheet.
-// v3: matéria, repetição semanal, etapas (checklist) e nota de prova.
+// v3: matéria, repetição (semanal, mensal ou a cada N dias), etapas (checklist) e nota de prova.
 
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useEffect, useMemo, useState } from 'react';
@@ -16,7 +16,13 @@ import {
 import * as db from '../db/database';
 import { taskTypes } from '../theme';
 import { useTheme } from '../theme-context';
-import { formatDateTime, WEEKDAY_INITIALS } from '../utils/date';
+import {
+  formatDateTime,
+  MAX_REPEAT_INTERVAL,
+  parseRepeat,
+  serializeRepeat,
+  WEEKDAY_INITIALS,
+} from '../utils/date';
 
 // Opções de "quando lembrar", em minutos antes do prazo.
 export const REMINDER_OPTIONS = [
@@ -24,6 +30,13 @@ export const REMINDER_OPTIONS = [
   { minutes: 60, label: '1h antes' },
   { minutes: 1440, label: '1 dia antes' },
   { minutes: 4320, label: '3 dias antes' },
+];
+
+const REPEAT_KINDS = [
+  { kind: 'none', label: 'Não repete' },
+  { kind: 'weekly', label: 'Semanal' },
+  { kind: 'monthly', label: 'Mensal' },
+  { kind: 'interval', label: 'A cada N dias' },
 ];
 
 // Prazo sugerido: amanhã às 08:00.
@@ -44,7 +57,9 @@ export default function TaskForm({ visible, task, onSave, onClose }) {
   const [subjectId, setSubjectId] = useState(null);
   const [dueDate, setDueDate] = useState(defaultDueDate);
   const [remindMinutes, setRemindMinutes] = useState(1440);
+  const [repeatKind, setRepeatKind] = useState('none'); // none | weekly | monthly | interval
   const [repeatDays, setRepeatDays] = useState([]); // [0..6]
+  const [repeatInterval, setRepeatInterval] = useState('15');
   const [steps, setSteps] = useState([]); // { id?, title, done }
   const [newStep, setNewStep] = useState('');
   const [grade, setGrade] = useState('');
@@ -60,7 +75,10 @@ export default function TaskForm({ visible, task, onSave, onClose }) {
     setSubjectId(task?.subject_id ?? null);
     setDueDate(task ? new Date(task.due_date) : defaultDueDate());
     setRemindMinutes(task?.remind_minutes ?? 1440);
-    setRepeatDays(task?.repeat_days ? task.repeat_days.split(',').map(Number) : []);
+    const repeat = parseRepeat(task?.repeat_days);
+    setRepeatKind(repeat?.kind ?? 'none');
+    setRepeatDays(repeat?.kind === 'weekly' ? repeat.days : []);
+    setRepeatInterval(repeat?.kind === 'interval' ? String(repeat.n) : '15');
     setSteps(
       task
         ? db.getSteps(task.uuid).map((s) => ({ id: s.id, title: s.title, done: s.done === 1 }))
@@ -92,6 +110,17 @@ export default function TaskForm({ visible, task, onSave, onClose }) {
     setSteps((s) => s.filter((_, i) => i !== index));
   }
 
+  // Converte o que está na tela na regra salva no banco (null = não repete).
+  function buildRepeatRule() {
+    if (repeatKind === 'weekly') return serializeRepeat({ kind: 'weekly', days: repeatDays });
+    if (repeatKind === 'monthly') return serializeRepeat({ kind: 'monthly' });
+    if (repeatKind === 'interval') {
+      const n = Math.min(MAX_REPEAT_INTERVAL, Math.max(1, parseInt(repeatInterval, 10) || 1));
+      return serializeRepeat({ kind: 'interval', n });
+    }
+    return null;
+  }
+
   function handleSave() {
     if (!title.trim()) return;
     const parsedGrade = grade.trim() === '' ? null : parseFloat(grade.replace(',', '.'));
@@ -101,7 +130,7 @@ export default function TaskForm({ visible, task, onSave, onClose }) {
       subjectId,
       dueDate,
       remindMinutes,
-      repeatDays: repeatDays.length > 0 ? repeatDays.join(',') : null,
+      repeatDays: buildRepeatRule(),
       grade: Number.isFinite(parsedGrade) ? parsedGrade : null,
       steps,
     });
@@ -216,24 +245,59 @@ export default function TaskForm({ visible, task, onSave, onClose }) {
               ))}
             </View>
 
-            <Text style={styles.label}>
-              Repetir toda semana: {repeatDays.length === 0 ? 'não repete' : ''}
-            </Text>
+            <Text style={styles.label}>Repetir:</Text>
             <View style={styles.chipRow}>
-              {WEEKDAY_INITIALS.map((letter, day) => (
+              {REPEAT_KINDS.map((opt) => (
                 <Pressable
-                  key={day}
-                  style={[styles.dayChip, repeatDays.includes(day) && styles.chipPrimary]}
-                  onPress={() => toggleRepeatDay(day)}
+                  key={opt.kind}
+                  style={[styles.chip, repeatKind === opt.kind && styles.chipPrimary]}
+                  onPress={() => setRepeatKind(opt.kind)}
                 >
-                  <Text
-                    style={[styles.chipText, repeatDays.includes(day) && styles.chipTextActive]}
-                  >
-                    {letter}
+                  <Text style={[styles.chipText, repeatKind === opt.kind && styles.chipTextActive]}>
+                    {opt.label}
                   </Text>
                 </Pressable>
               ))}
             </View>
+
+            {repeatKind === 'weekly' ? (
+              <View style={styles.chipRow}>
+                {WEEKDAY_INITIALS.map((letter, day) => (
+                  <Pressable
+                    key={day}
+                    style={[styles.dayChip, repeatDays.includes(day) && styles.chipPrimary]}
+                    onPress={() => toggleRepeatDay(day)}
+                  >
+                    <Text
+                      style={[styles.chipText, repeatDays.includes(day) && styles.chipTextActive]}
+                    >
+                      {letter}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            ) : null}
+
+            {repeatKind === 'monthly' ? (
+              <Text style={styles.hint}>
+                Repete todo mês, no dia {dueDate.getDate()}
+                {dueDate.getDate() > 28 ? ' (ou no último dia, em meses mais curtos)' : ''}.
+              </Text>
+            ) : null}
+
+            {repeatKind === 'interval' ? (
+              <View style={styles.chipRow}>
+                <Text style={styles.hint}>A cada</Text>
+                <TextInput
+                  style={[styles.input, styles.intervalInput]}
+                  keyboardType="number-pad"
+                  maxLength={3}
+                  value={repeatInterval}
+                  onChangeText={(t) => setRepeatInterval(t.replace(/[^0-9]/g, ''))}
+                />
+                <Text style={styles.hint}>dias</Text>
+              </View>
+            ) : null}
 
             <Text style={styles.label}>Etapas:</Text>
             {steps.map((step, i) => (
@@ -377,6 +441,11 @@ function createStyles(colors) {
     hint: {
       fontSize: 13,
       color: colors.textMuted,
+      alignSelf: 'center',
+    },
+    intervalInput: {
+      width: 72,
+      textAlign: 'center',
     },
     dateButton: {
       flex: 1,
