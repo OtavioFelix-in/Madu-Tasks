@@ -15,7 +15,6 @@ Anotações do que vamos mudar. Nada disso foi começado ainda, exceto o que est
 - [ ] Gerar o APK no computador e instalar por cima da versão antiga (os dados devem continuar lá)
 - [ ] Testar no celular: câmera, fotos, widget e o cronômetro trocando de aba
 - [ ] Decidir o destino do código da v1.1: branch com nome limpo, direto na `main`, ou descartar
-- [ ] Decidir se o `.claude/settings.json` continua no repositório
 
 ## 1. Design do app
 
