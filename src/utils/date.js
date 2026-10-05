@@ -41,7 +41,31 @@ export function relativeLabel(isoDate) {
   return `em ${days} dias`;
 }
 
-// ---- Repetição semanal ----
+// ---- Repetição ----
+
+// A regra fica em uma coluna de texto (repeat_days), em três formatos:
+//   "1,3,5"  semanal: dias da semana (0=dom..6=sáb)  <- formato original, continua valendo
+//   "m"      mensal: mesmo dia do mês
+//   "i:15"   por intervalo: a cada 15 dias
+export const MAX_REPEAT_INTERVAL = 365;
+
+export function parseRepeat(rule) {
+  if (!rule) return null;
+  if (rule === 'm') return { kind: 'monthly' };
+  if (rule.startsWith('i:')) {
+    const n = parseInt(rule.slice(2), 10);
+    return n >= 1 && n <= MAX_REPEAT_INTERVAL ? { kind: 'interval', n } : null;
+  }
+  const days = rule.split(',').map(Number).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6);
+  return days.length > 0 ? { kind: 'weekly', days } : null;
+}
+
+export function serializeRepeat(repeat) {
+  if (!repeat) return null;
+  if (repeat.kind === 'monthly') return 'm';
+  if (repeat.kind === 'interval') return `i:${repeat.n}`;
+  return repeat.days.length > 0 ? repeat.days.join(',') : null;
+}
 
 // Próxima data (depois de fromDate) que cai num dos dias escolhidos (0=dom..6=sáb),
 // mantendo o mesmo horário. Ex.: concluiu a de segunda, nasce a da próxima segunda.
@@ -53,6 +77,36 @@ export function nextOccurrence(fromDate, repeatDays) {
     if (repeatDays.includes(candidate.getDay())) return candidate;
   }
   return null;
+}
+
+// Mesmo dia do mês seguinte; em meses mais curtos cai no último dia (31/01 -> 28/02).
+function nextMonth(fromDate) {
+  const next = new Date(fromDate);
+  next.setDate(1);
+  next.setMonth(next.getMonth() + 1);
+  const lastDay = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
+  next.setDate(Math.min(fromDate.getDate(), lastDay));
+  return next;
+}
+
+// Próxima ocorrência para qualquer tipo de regra, mantendo o horário.
+export function nextRepeatDate(fromDate, rule) {
+  const repeat = parseRepeat(rule);
+  if (!repeat) return null;
+  if (repeat.kind === 'weekly') return nextOccurrence(fromDate, repeat.days);
+  if (repeat.kind === 'monthly') return nextMonth(fromDate);
+  const next = new Date(fromDate);
+  next.setDate(next.getDate() + repeat.n);
+  return next;
+}
+
+// Texto curto para o card da tarefa.
+export function repeatLabel(rule) {
+  const repeat = parseRepeat(rule);
+  if (!repeat) return '';
+  if (repeat.kind === 'monthly') return 'todo mês';
+  if (repeat.kind === 'interval') return repeat.n === 1 ? 'todo dia' : `a cada ${repeat.n} dias`;
+  return 'toda semana';
 }
 
 // ---- Helpers do calendário ----

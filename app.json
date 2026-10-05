@@ -2,7 +2,7 @@
   "expo": {
     "name": "MaduTasks",
     "slug": "madu-tasks",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -16,7 +16,8 @@
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
-      }
+      },
+      "versionCode": 2
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -31,7 +32,16 @@
           "color": "#E75480"
         }
       ],
-      "expo-sharing"
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "O MaduTasks precisa acessar suas fotos para anexá-las às tarefas.",
+          "cameraPermission": "O MaduTasks precisa da câmera para fotografar anotações e anexar às tarefas.",
+          "microphonePermission": false
+        }
+      ],
+      "expo-sharing",
+      "./plugins/task-widget"
     ]
   }
 }

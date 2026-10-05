@@ -1,9 +1,11 @@
 // Formulário de tarefa (nova ou edição), apresentado como bottom sheet.
-// v3: matéria, repetição semanal, etapas (checklist) e nota de prova.
+// v3: matéria, repetição (semanal, mensal ou a cada N dias), etapas (checklist) e nota de prova.
 
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useEffect, useMemo, useState } from 'react';
 import {
+  Alert,
+  Image,
   KeyboardAvoidingView,
   Modal,
   Pressable,
@@ -13,10 +15,17 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { attachmentUri, deleteAttachmentFile, pickPhotos, takePhoto } from '../attachments/attachments';
 import * as db from '../db/database';
 import { taskTypes } from '../theme';
 import { useTheme } from '../theme-context';
-import { formatDateTime, WEEKDAY_INITIALS } from '../utils/date';
+import {
+  formatDateTime,
+  MAX_REPEAT_INTERVAL,
+  parseRepeat,
+  serializeRepeat,
+  WEEKDAY_INITIALS,
+} from '../utils/date';
 
 // Opções de "quando lembrar", em minutos antes do prazo.
 export const REMINDER_OPTIONS = [
@@ -24,6 +33,13 @@ export const REMINDER_OPTIONS = [
   { minutes: 60, label: '1h antes' },
   { minutes: 1440, label: '1 dia antes' },
   { minutes: 4320, label: '3 dias antes' },
+];
+
+const REPEAT_KINDS = [
+  { kind: 'none', label: 'Não repete' },
+  { kind: 'weekly', label: 'Semanal' },
+  { kind: 'monthly', label: 'Mensal' },
+  { kind: 'interval', label: 'A cada N dias' },
 ];
 
 // Prazo sugerido: amanhã às 08:00.
@@ -44,11 +60,15 @@ export default function TaskForm({ visible, task, onSave, onClose }) {
   const [subjectId, setSubjectId] = useState(null);
   const [dueDate, setDueDate] = useState(defaultDueDate);
   const [remindMinutes, setRemindMinutes] = useState(1440);
+  const [repeatKind, setRepeatKind] = useState('none'); // none | weekly | monthly | interval
   const [repeatDays, setRepeatDays] = useState([]); // [0..6]
+  const [repeatInterval, setRepeatInterval] = useState('15');
   const [steps, setSteps] = useState([]); // { id?, title, done }
   const [newStep, setNewStep] = useState('');
   const [grade, setGrade] = useState('');
   const [picker, setPicker] = useState(null); // 'date' | 'time' | null
+  const [photos, setPhotos] = useState([]); // { id?, fileName, uri }
+  const [viewerUri, setViewerUri] = useState(null);
 
   const subjects = useMemo(() => (visible ? db.getSubjects() : []), [visible]);
 
@@ -60,7 +80,10 @@ export default function TaskForm({ visible, task, onSave, onClose }) {
     setSubjectId(task?.subject_id ?? null);
     setDueDate(task ? new Date(task.due_date) : defaultDueDate());
     setRemindMinutes(task?.remind_minutes ?? 1440);
-    setRepeatDays(task?.repeat_days ? task.repeat_days.split(',').map(Number) : []);
+    const repeat = parseRepeat(task?.repeat_days);
+    setRepeatKind(repeat?.kind ?? 'none');
+    setRepeatDays(repeat?.kind === 'weekly' ? repeat.days : []);
+    setRepeatInterval(repeat?.kind === 'interval' ? String(repeat.n) : '15');
     setSteps(
       task
         ? db.getSteps(task.uuid).map((s) => ({ id: s.id, title: s.title, done: s.done === 1 }))
@@ -69,6 +92,16 @@ export default function TaskForm({ visible, task, onSave, onClose }) {
     setNewStep('');
     setGrade(task?.grade != null ? String(task.grade) : '');
     setPicker(null);
+    setPhotos(
+      task
+        ? db.getAttachments(task.uuid).map((a) => ({
+            id: a.id,
+            fileName: a.file_name,
+            uri: attachmentUri(a.file_name),
+          }))
+        : []
+    );
+    setViewerUri(null);
   }, [visible, task]);
 
   function toggleRepeatDay(day) {
@@ -92,6 +125,43 @@ export default function TaskForm({ visible, task, onSave, onClose }) {
     setSteps((s) => s.filter((_, i) => i !== index));
   }
 
+  // Converte o que está na tela na regra salva no banco (null = não repete).
+  function buildRepeatRule() {
+    if (repeatKind === 'weekly') return serializeRepeat({ kind: 'weekly', days: repeatDays });
+    if (repeatKind === 'monthly') return serializeRepeat({ kind: 'monthly' });
+    if (repeatKind === 'interval') {
+      const n = Math.min(MAX_REPEAT_INTERVAL, Math.max(1, parseInt(repeatInterval, 10) || 1));
+      return serializeRepeat({ kind: 'interval', n });
+    }
+    return null;
+  }
+
+  async function addPhotos(pick) {
+    try {
+      const { photos: added, denied } = await pick();
+      if (denied) {
+        Alert.alert('Câmera bloqueada', 'Libere a câmera nas configurações do app para tirar fotos.');
+      } else if (added.length > 0) {
+        setPhotos((current) => [...current, ...added]);
+      }
+    } catch (e) {
+      Alert.alert('Não foi possível anexar a foto', String(e?.message ?? e));
+    }
+  }
+
+  function removePhoto(index) {
+    const photo = photos[index];
+    // Foto que ainda não foi salva: apaga o arquivo já. As salvas saem no "Salvar".
+    if (!photo.id) deleteAttachmentFile(photo.fileName);
+    setPhotos((current) => current.filter((_, i) => i !== index));
+  }
+
+  // Cancelar/fechar descarta as fotos novas que não chegaram a ser salvas.
+  function handleClose() {
+    photos.filter((p) => !p.id).forEach((p) => deleteAttachmentFile(p.fileName));
+    onClose();
+  }
+
   function handleSave() {
     if (!title.trim()) return;
     const parsedGrade = grade.trim() === '' ? null : parseFloat(grade.replace(',', '.'));
@@ -101,9 +171,10 @@ export default function TaskForm({ visible, task, onSave, onClose }) {
       subjectId,
       dueDate,
       remindMinutes,
-      repeatDays: repeatDays.length > 0 ? repeatDays.join(',') : null,
+      repeatDays: buildRepeatRule(),
       grade: Number.isFinite(parsedGrade) ? parsedGrade : null,
       steps,
+      photos,
     });
   }
 
@@ -123,7 +194,7 @@ export default function TaskForm({ visible, task, onSave, onClose }) {
   }
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={handleClose}>
       {/* 'padding' também no Android: com edge-to-edge (Android 15+) o sistema
           não redimensiona a janela sozinho e o teclado cobria o formulário. */}
       <KeyboardAvoidingView style={styles.backdrop} behavior="padding">
@@ -216,24 +287,59 @@ export default function TaskForm({ visible, task, onSave, onClose }) {
               ))}
             </View>
 
-            <Text style={styles.label}>
-              Repetir toda semana: {repeatDays.length === 0 ? 'não repete' : ''}
-            </Text>
+            <Text style={styles.label}>Repetir:</Text>
             <View style={styles.chipRow}>
-              {WEEKDAY_INITIALS.map((letter, day) => (
+              {REPEAT_KINDS.map((opt) => (
                 <Pressable
-                  key={day}
-                  style={[styles.dayChip, repeatDays.includes(day) && styles.chipPrimary]}
-                  onPress={() => toggleRepeatDay(day)}
+                  key={opt.kind}
+                  style={[styles.chip, repeatKind === opt.kind && styles.chipPrimary]}
+                  onPress={() => setRepeatKind(opt.kind)}
                 >
-                  <Text
-                    style={[styles.chipText, repeatDays.includes(day) && styles.chipTextActive]}
-                  >
-                    {letter}
+                  <Text style={[styles.chipText, repeatKind === opt.kind && styles.chipTextActive]}>
+                    {opt.label}
                   </Text>
                 </Pressable>
               ))}
             </View>
+
+            {repeatKind === 'weekly' ? (
+              <View style={styles.chipRow}>
+                {WEEKDAY_INITIALS.map((letter, day) => (
+                  <Pressable
+                    key={day}
+                    style={[styles.dayChip, repeatDays.includes(day) && styles.chipPrimary]}
+                    onPress={() => toggleRepeatDay(day)}
+                  >
+                    <Text
+                      style={[styles.chipText, repeatDays.includes(day) && styles.chipTextActive]}
+                    >
+                      {letter}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            ) : null}
+
+            {repeatKind === 'monthly' ? (
+              <Text style={styles.hint}>
+                Repete todo mês, no dia {dueDate.getDate()}
+                {dueDate.getDate() > 28 ? ' (ou no último dia, em meses mais curtos)' : ''}.
+              </Text>
+            ) : null}
+
+            {repeatKind === 'interval' ? (
+              <View style={styles.chipRow}>
+                <Text style={styles.hint}>A cada</Text>
+                <TextInput
+                  style={[styles.input, styles.intervalInput]}
+                  keyboardType="number-pad"
+                  maxLength={3}
+                  value={repeatInterval}
+                  onChangeText={(t) => setRepeatInterval(t.replace(/[^0-9]/g, ''))}
+                />
+                <Text style={styles.hint}>dias</Text>
+              </View>
+            ) : null}
 
             <Text style={styles.label}>Etapas:</Text>
             {steps.map((step, i) => (
@@ -266,6 +372,30 @@ export default function TaskForm({ visible, task, onSave, onClose }) {
               </Pressable>
             </View>
 
+            <Text style={styles.label}>Fotos:</Text>
+            {photos.length > 0 ? (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={styles.photoRow}>
+                  {photos.map((photo, i) => (
+                    <Pressable key={photo.fileName} onPress={() => setViewerUri(photo.uri)}>
+                      <Image source={{ uri: photo.uri }} style={styles.thumb} />
+                      <Pressable style={styles.thumbRemove} hitSlop={8} onPress={() => removePhoto(i)}>
+                        <Text style={styles.thumbRemoveText}>✕</Text>
+                      </Pressable>
+                    </Pressable>
+                  ))}
+                </View>
+              </ScrollView>
+            ) : null}
+            <View style={styles.chipRow}>
+              <Pressable style={styles.chip} onPress={() => addPhotos(takePhoto)}>
+                <Text style={styles.chipText}>📷 Câmera</Text>
+              </Pressable>
+              <Pressable style={styles.chip} onPress={() => addPhotos(pickPhotos)}>
+                <Text style={styles.chipText}>🖼️ Galeria</Text>
+              </Pressable>
+            </View>
+
             {type === 'prova' ? (
               <>
                 <Text style={styles.label}>Nota da prova (opcional):</Text>
@@ -281,7 +411,7 @@ export default function TaskForm({ visible, task, onSave, onClose }) {
             ) : null}
 
             <View style={styles.actions}>
-              <Pressable style={[styles.actionButton, styles.cancelButton]} onPress={onClose}>
+              <Pressable style={[styles.actionButton, styles.cancelButton]} onPress={handleClose}>
                 <Text style={styles.cancelText}>Cancelar</Text>
               </Pressable>
               <Pressable
@@ -294,6 +424,14 @@ export default function TaskForm({ visible, task, onSave, onClose }) {
           </ScrollView>
         </View>
       </KeyboardAvoidingView>
+
+      <Modal visible={!!viewerUri} transparent animationType="fade" onRequestClose={() => setViewerUri(null)}>
+        <Pressable style={styles.viewer} onPress={() => setViewerUri(null)}>
+          {viewerUri ? (
+            <Image source={{ uri: viewerUri }} style={styles.viewerImage} resizeMode="contain" />
+          ) : null}
+        </Pressable>
+      </Modal>
     </Modal>
   );
 }
@@ -377,6 +515,11 @@ function createStyles(colors) {
     hint: {
       fontSize: 13,
       color: colors.textMuted,
+      alignSelf: 'center',
+    },
+    intervalInput: {
+      width: 72,
+      textAlign: 'center',
     },
     dateButton: {
       flex: 1,
@@ -431,6 +574,43 @@ function createStyles(colors) {
     stepRemove: {
       color: colors.textMuted,
       fontSize: 16,
+    },
+    photoRow: {
+      flexDirection: 'row',
+      gap: 10,
+      paddingVertical: 4,
+    },
+    thumb: {
+      width: 84,
+      height: 84,
+      borderRadius: 12,
+      backgroundColor: colors.primaryLight,
+    },
+    thumbRemove: {
+      position: 'absolute',
+      top: 4,
+      right: 4,
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      backgroundColor: 'rgba(0,0,0,0.6)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    thumbRemoveText: {
+      color: '#fff',
+      fontSize: 12,
+      fontWeight: '700',
+    },
+    viewer: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.92)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    viewerImage: {
+      width: '100%',
+      height: '100%',
     },
     stepAdd: {
       width: 44,

@@ -65,6 +65,13 @@ export function initDatabase() {
       updated_at TEXT,
       deleted INTEGER NOT NULL DEFAULT 0
     );
+    CREATE TABLE IF NOT EXISTS attachments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      uuid TEXT UNIQUE,
+      task_uuid TEXT NOT NULL,
+      file_name TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
+    );
     CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY,
       value TEXT
@@ -307,6 +314,33 @@ export function replaceSteps(taskUuid, steps) {
   });
 }
 
+// ---- Anexos (fotos) ----
+// Só o nome do arquivo fica no banco; a imagem em si mora na pasta do app
+// (ver src/attachments/attachments.js). Anexos ficam só no aparelho: não entram
+// no sync nem no backup em JSON.
+
+export function getAttachments(taskUuid) {
+  return db.getAllSync('SELECT * FROM attachments WHERE task_uuid = ? ORDER BY id', taskUuid);
+}
+
+// Contagem por tarefa, para o selo "📷 2" nos cards com uma consulta só.
+export function getAttachmentCounts() {
+  return db.getAllSync('SELECT task_uuid, COUNT(*) AS total FROM attachments GROUP BY task_uuid');
+}
+
+export function addAttachment(taskUuid, fileName) {
+  db.runSync(
+    'INSERT INTO attachments (uuid, task_uuid, file_name) VALUES (?, ?, ?)',
+    newUuid(),
+    taskUuid,
+    fileName
+  );
+}
+
+export function removeAttachment(id) {
+  db.runSync('DELETE FROM attachments WHERE id = ?', id);
+}
+
 // ---- Settings (chave/valor) ----
 
 export function getSetting(key, fallback = null) {
@@ -324,11 +358,22 @@ export function setSetting(key, value) {
 
 // ---- Pomodoro ----
 
-export function addPomodoroSession(minutes) {
+// finished_at fica em hora local ('YYYY-MM-DD HH:MM:SS'), como o default da tabela.
+function toLocalSql(date) {
+  const p = (n) => String(n).padStart(2, '0');
+  return (
+    `${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())} ` +
+    `${p(date.getHours())}:${p(date.getMinutes())}:${p(date.getSeconds())}`
+  );
+}
+
+// `finishedAt` permite contabilizar um ciclo que terminou com o app fechado.
+export function addPomodoroSession(minutes, finishedAt = new Date()) {
   db.runSync(
-    'INSERT INTO pomodoro_sessions (uuid, minutes, updated_at) VALUES (?, ?, ?)',
+    'INSERT INTO pomodoro_sessions (uuid, minutes, finished_at, updated_at) VALUES (?, ?, ?, ?)',
     newUuid(),
     minutes,
+    toLocalSql(finishedAt),
     nowIso()
   );
 }
@@ -338,6 +383,21 @@ export function getPomodorosToday() {
     `SELECT COUNT(*) AS n FROM pomodoro_sessions
      WHERE deleted = 0 AND finished_at >= date('now', 'localtime')`
   ).n;
+}
+
+// ---- Widget ----
+
+// Próximas tarefas pendentes (com nome da matéria) para o widget da tela inicial.
+export function getWidgetTasks(limit) {
+  return db.getAllSync(
+    `SELECT t.title, t.type, t.due_date, s.name AS subject_name
+     FROM tasks t
+     LEFT JOIN subjects s ON s.id = t.subject_id AND s.deleted = 0
+     WHERE t.deleted = 0 AND t.done = 0
+     ORDER BY t.due_date ASC
+     LIMIT ?`,
+    limit
+  );
 }
 
 // ---- Estatísticas ----

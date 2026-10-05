@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="madu_widget_bg">#FF1E1B1F</color>
+    <color name="madu_widget_text">#FFF2EDF0</color>
+    <color name="madu_widget_muted">#FFB0A8AD</color>
+    <color name="madu_widget_accent">#FFFF7FA5</color>
+</resources>
