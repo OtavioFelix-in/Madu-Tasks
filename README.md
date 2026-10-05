@@ -2,7 +2,7 @@
 
 <img src="assets/icon.png" width="110" alt="MaduTasks" />
 
-# MaduTasks 💖
+# MaduTasks
 
 **A agenda de estudos que nasceu de uma promessa.**
 
@@ -16,39 +16,39 @@
 
 ---
 
-## 💌 A história
+## A história
 
 Minha namorada, a **Madu**, faz um curso cheio de provas, trabalhos e entregas — e organizava tudo no **Bloco de Notas** do celular. Eu tinha prometido a ela um app de verdade pra isso.
 
-O **MaduTasks** é essa promessa cumprida: um lugar bonito e simples pra ela anotar as provas e atividades, receber lembretes na hora certa e ter controle dos estudos sem depender de anotação solta. Feito com carinho, do zero, sob medida pra rotina dela. 💖
+O **MaduTasks** é essa promessa cumprida: um lugar bonito e simples pra ela anotar as provas e atividades, receber lembretes na hora certa e ter controle dos estudos sem depender de anotação solta. Feito com carinho, do zero, sob medida pra rotina dela.
 
 ---
 
-## ✨ Funcionalidades
+## Funcionalidades
 
 **Organização**
-- 📝 Tarefas com tipo (prova, trabalho, tarefa), prazo e lembrete configurável (na hora, 1h, 1 dia ou 3 dias antes)
-- 📚 **Módulos → Matérias** com cores próprias, além de **filtro** e **busca**
-- ☑️ **Etapas** (checklist) dentro de cada tarefa, com progresso no card
-- 🔁 **Repetição semanal**: ao concluir, a próxima ocorrência nasce sozinha
-- ✏️ Edição completa e conclusão com um toque
+- Tarefas com tipo (prova, trabalho, tarefa), prazo e lembrete configurável (na hora, 1h, 1 dia ou 3 dias antes)
+- **Módulos → Matérias** com cores próprias, além de **filtro** e **busca**
+- **Etapas** (checklist) dentro de cada tarefa, com progresso no card
+- **Repetição semanal**: ao concluir, a próxima ocorrência nasce sozinha
+- Edição completa e conclusão com um toque
 
 **Estudo**
-- 📅 **Calendário** mensal com marcadores coloridos por matéria
-- 🍅 **Pomodoro** com foco e pausa ajustáveis e notificação ao fim do ciclo
-- 📝 **Notas das provas** com média por matéria
-- 📊 **Resumo**: concluídas no mês, pendentes, atrasadas e **sequência de dias** estudando 🔥
-- 🎉 Confete ao concluir uma tarefa
+- **Calendário** mensal com marcadores coloridos por matéria
+- **Pomodoro** com foco e pausa ajustáveis e notificação ao fim do ciclo
+- **Notas das provas** com média por matéria
+- **Resumo**: concluídas no mês, pendentes, atrasadas e **sequência de dias** estudando
+- Confete ao concluir uma tarefa
 
 **Experiência**
-- 🔔 Lembretes locais que funcionam com o app fechado
-- 🌙 **Tema claro e escuro** (automático ou manual)
-- 💾 **Backup** local (exportar/importar) e ☁️ **sincronização** entre celular e tablet
-- 📴 **100% offline** — a internet só é usada (opcionalmente) para sincronizar
+- Lembretes locais que funcionam com o app fechado
+- **Tema claro e escuro** (automático ou manual)
+- **Backup** local (exportar/importar) e **sincronização** entre celular e tablet
+- **100% offline** — a internet só é usada (opcionalmente) para sincronizar
 
 ---
 
-## 📱 Telas
+## Telas
 
 <div align="center">
 
@@ -62,7 +62,7 @@ O **MaduTasks** é essa promessa cumprida: um lugar bonito e simples pra ela ano
 
 ---
 
-## 🛠️ Tecnologias
+## Tecnologias
 
 - **React Native 0.86** + **Expo SDK 57** (um código só para celular e tablet)
 - **expo-sqlite** — banco local, o app funciona sem internet
@@ -72,7 +72,7 @@ O **MaduTasks** é essa promessa cumprida: um lugar bonito e simples pra ela ano
 
 ---
 
-## 🏗️ Arquitetura
+## Arquitetura
 
 Offline-first: o **SQLite é a fonte da verdade** no aparelho; o Supabase é só uma cópia na nuvem para manter celular e tablet iguais (a alteração mais recente vence).
 
@@ -94,7 +94,7 @@ madu-tasks/
 
 ---
 
-## 🚀 Rodando o projeto
+## Rodando o projeto
 
 **Desenvolvimento** (com o app Expo Go no celular):
 
@@ -117,13 +117,13 @@ Depois é só mandar o `.apk` para o celular, tocar nele e permitir a instalaç�
 
 ---
 
-## ☁️ Sincronização entre aparelhos
+## Sincronização entre aparelhos
 
 Opcional e desligada por padrão. Para ligar (celular + tablet com os mesmos dados), siga o passo a passo em **[SUPABASE.md](SUPABASE.md)** — leva uns 10 minutos e usa o plano gratuito do Supabase.
 
 ---
 
-## 🗺️ Próximos passos
+## Próximos passos
 
 - Repetição mensal e por intervalo ("a cada 15 dias")
 - Anexos e fotos nas tarefas
@@ -133,6 +133,6 @@ Opcional e desligada por padrão. Para ligar (celular + tablet com os mesmos dad
 
 <div align="center">
 
-Feito com 💖 para a **Madu**.
+Feito com carinho para a **Madu**.
 
 </div>
