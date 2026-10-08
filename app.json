@@ -41,7 +41,19 @@
         }
       ],
       "expo-sharing",
-      "./plugins/task-widget"
+      "./plugins/task-widget",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 220,
+          "backgroundColor": "#E75480",
+          "dark": {
+            "image": "./assets/splash-icon-dark.png",
+            "backgroundColor": "#2B1220"
+          }
+        }
+      ]
     ]
   }
 }

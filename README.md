@@ -1,8 +1,9 @@
 <div align="center">
 
-<img src="assets/icon.png" width="110" alt="MaduTasks" />
-
-# MaduTasks
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/logo/logo-escuro.svg" />
+  <img src="docs/logo/logo-claro.svg" width="380" alt="MaduTasks" />
+</picture>
 
 **A agenda de estudos que nasceu de uma promessa.**
 

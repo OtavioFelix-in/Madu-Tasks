@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="madu_widget_description">Suas próximas provas e tarefas</string>
-    <color name="madu_widget_bg">#FFFFFFFF</color>
-    <color name="madu_widget_text">#FF2B2B2B</color>
-    <color name="madu_widget_muted">#FF7A7A7A</color>
+    <color name="madu_widget_bg">#FFFFF6F8</color>
+    <color name="madu_widget_text">#FF5A2440</color>
+    <color name="madu_widget_muted">#FF8E6479</color>
     <color name="madu_widget_accent">#FFE75480</color>
+    <color name="madu_widget_ink">#FF5A2440</color>
 </resources>

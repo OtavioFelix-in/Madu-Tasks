@@ -10,13 +10,29 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:gravity="center_vertical"
         android:orientation="horizontal">
+
+        <ImageView
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:layout_marginEnd="6dp"
+            android:contentDescription="MaduTasks"
+            android:src="@drawable/madu_widget_logo" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Madu"
+            android:textColor="@color/madu_widget_ink"
+            android:textSize="15sp"
+            android:textStyle="bold" />
 
         <TextView
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="MaduTasks 💖"
+            android:text="Tasks"
             android:textColor="@color/madu_widget_accent"
             android:textSize="15sp"
             android:textStyle="bold" />

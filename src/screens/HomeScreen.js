@@ -6,6 +6,7 @@ import {
   Alert,
   Dimensions,
   FlatList,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -25,8 +26,13 @@ import { taskTypes } from '../theme';
 import { useTheme } from '../theme-context';
 import { nextRepeatDate } from '../utils/date';
 
+const LOGO = {
+  light: require('../../assets/logo-horizontal-claro.png'),
+  dark: require('../../assets/logo-horizontal-escuro.png'),
+};
+
 export default function HomeScreen() {
-  const { colors, mode, cycleMode } = useTheme();
+  const { colors, isDark, mode, cycleMode } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const [tasks, setTasks] = useState([]);
@@ -185,7 +191,12 @@ export default function HomeScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.appTitle}>MaduTasks 💖</Text>
+          <Image
+            source={isDark ? LOGO.dark : LOGO.light}
+            style={styles.logo}
+            resizeMode="contain"
+            accessibilityLabel="MaduTasks"
+          />
           <Text style={styles.subtitle}>
             {pendingCount === 0
               ? 'Tudo em dia, arrasou! 🎉'
@@ -321,6 +332,7 @@ export default function HomeScreen() {
           key={celebrate}
           count={70}
           origin={{ x: Dimensions.get('window').width / 2, y: -10 }}
+          colors={['#E75480', '#F07A9C', '#5A2440', '#FFD3DF', '#B94366']}
           fadeOut
           autoStart
         />
@@ -343,10 +355,9 @@ function createStyles(colors) {
       paddingBottom: 8,
       gap: 8,
     },
-    appTitle: {
-      fontSize: 28,
-      fontWeight: '800',
-      color: colors.primary,
+    logo: {
+      width: 145,
+      height: 35,
     },
     subtitle: {
       fontSize: 14,

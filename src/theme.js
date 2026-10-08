@@ -1,26 +1,28 @@
 // Paletas de cor (clara e escura), tipos de tarefa e cores de matéria.
 // Os componentes pegam a paleta ativa via useTheme() (src/theme-context.js).
 
+// Cores tiradas da logo (Promocional/Logo nova): rosa #E75480, vinho #5A2440,
+// papel #FFF6F8, rosa-claro #FFD3DF; no escuro, fundo #190A11 e cartão #2B1220.
 export const palettes = {
   light: {
-    background: '#FFF5F8',
+    background: '#FFF6F8',
     card: '#FFFFFF',
     primary: '#E75480',
-    primaryLight: '#FBDDE8',
-    text: '#3D2C35',
-    textMuted: '#9B8A93',
-    border: '#F3DCE4',
+    primaryLight: '#FFE1EA',
+    text: '#5A2440',
+    textMuted: '#8E6479',
+    border: '#F6DCE5',
     success: '#6BBF73',
     danger: '#E05B5B',
   },
   dark: {
-    background: '#1E1418',
-    card: '#2B1E25',
-    primary: '#F06292',
-    primaryLight: '#4A2E3B',
-    text: '#F5E9EE',
-    textMuted: '#A78B97',
-    border: '#3D2A33',
+    background: '#190A11',
+    card: '#2B1220',
+    primary: '#E75480',
+    primaryLight: '#4A1D33',
+    text: '#FFF6F8',
+    textMuted: '#B48A9E',
+    border: '#45233A',
     success: '#7BC47F',
     danger: '#E57373',
   },
